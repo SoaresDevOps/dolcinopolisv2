@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prime Command</title>
+    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+        :root { --surface-bg: #0A0A0C; --surface-card: #141417; --prime-accent: #007AFF; --text-primary: #F5F5F7; --text-muted: #86868B; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--surface-bg); color: var(--text-primary); display: flex; justify-content: center; align-items: center; height: 100vh; -webkit-font-smoothing: antialiased; }
+        .command-center { background: var(--surface-card); padding: 40px; border-radius: 24px; width: 100%; max-width: 420px; border: 1px solid rgba(255,255,255,0.05); }
+        .header-brand { font-size: 14px; font-weight: 700; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 30px; text-align: center; }
+        .input-group { margin-bottom: 20px; position: relative; }
+        .input-group label { position: absolute; top: -8px; left: 16px; background: var(--surface-card); padding: 0 4px; font-size: 12px; color: var(--prime-accent); font-weight: 500; }
+        input, select { width: 100%; padding: 16px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.1); color: var(--text-primary); border-radius: 12px; font-size: 16px; transition: all 0.2s ease; appearance: none; }
+        select option { background: #141417; color: #FFF; }
+        input:focus, select:focus { outline: none; border-color: var(--prime-accent); background: rgba(0, 122, 255, 0.05); }
+        .btn-call { width: 100%; padding: 18px; margin-top: 10px; background: var(--prime-accent); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 16px rgba(0, 122, 255, 0.3); transition: all 0.2s; }
+        .btn-call:active { transform: scale(0.96); }
+        .btn-call.success { background: #34C759; box-shadow: 0 8px 16px rgba(52, 199, 89, 0.3); }
+    </style>
+</head>
+<body>
+
+    <div class="command-center">
+        <div class="header-brand">PrimeLogic Hub</div>
+        
+        <div class="input-group">
+            <label>Paciente</label>
+            <input type="text" id="paciente" placeholder="Digite o nome..." autocomplete="off" autofocus>
+        </div>
+
+        <div class="input-group">
+            <label>Profissional</label>
+            <select id="doutor">
+                <option value=""></option>
+                <option value="Dr.Rafael">Dr.Rafael</option>
+                <option value="Amilton">Amilton</option>
+                <option value="Joyce">Joyce</option>
+                <option value="Ariane">Ariane</option>
+                <option value="Silvia">Silvia</option>
+                <option value="Estela">Stela</option>
+                <option value="Jessica">Jessica</option>
+                <option value="Neide">Neide</option>
+                <option value="Angélica">Angélica</option>
+                <option value="Dra.Yolennis">Dra.Yolennis</option>
+                <option value="Dr.Marcos">Dr.Marcos</option>
+                <option value="Claudemir">Claudemir</option>
+                <option value="Dr.Prata">Dr.Prata</option>
+                <option value="Dra.Taynara Sayun">Dra.Taynara Sayun</option>
+                <option value="Cindy">Cindy</option>
+                <option value="Mayara">Mayara</option>
+                <option value="Dra. Natália Amado">Dra. Natália Amado</option>
+                <option value="Dr. Lucas Duran">Dr. Lucas Duran</option>
+            </select>
+        </div>
+
+        <div class="input-group">
+            <label>Local de Atendimento</label>
+            <select id="sala">
+                <option value="Consultório Medico">Consultório Medico</option>
+                <option value="Triagem">Triagem</option>
+                <option value="Vacina">Vacina</option>
+                <option value="Coleta de Sangue">Coleta de Sangue</option>
+                <option value="Medicação">Medicação</option>
+                <option value="Consultório Odontológico">Consultório Odontológico</option>
+            </select>
+        </div>
+
+        <button class="btn-call" id="btnAction" onclick="dispararChamada()">EMITIR CHAMADA</button>
+    </div>
+
+    <script>
+        const socket = io();
+
+        function dispararChamada() {
+            const input = document.getElementById('paciente');
+            const paciente = input.value.trim();
+            if (!paciente) return;
+
+            const dados = {
+                paciente: paciente,
+                doutor: document.getElementById('doutor').value,
+                sala: document.getElementById('sala').value
+            };
+
+            socket.emit('emit_call', dados);
+
+            const btn = document.getElementById('btnAction');
+            btn.classList.add('success');
+            btn.innerText = "CHAMADO!";
+            
+            setTimeout(() => {
+                btn.classList.remove('success');
+                btn.innerText = "EMITIR CHAMADA";
+                input.value = '';
+                input.focus();
+            }, 1200);
+        }
+
+        document.getElementById('paciente').addEventListener('keypress', function(e) {
+            if(e.key === 'Enter') dispararChamada();
+        });
+    </script>
+</body>
+</html>

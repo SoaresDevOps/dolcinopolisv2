@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>PrimeLogic Admin</title>
+    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { background: #0A0F1A; color: #FFF; font-family: 'Inter', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin:0; }
+        .admin-box { background: #141923; padding: 40px; border-radius: 16px; width: 100%; max-width: 500px; border: 1px solid #007AFF; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+        h1 { font-size: 22px; margin-bottom: 25px; text-align: center; color: #007AFF; text-transform: uppercase; font-weight: 900; letter-spacing: 1px; }
+        label { display: block; margin-bottom: 12px; color: #8E9BAE; font-size: 13px; font-weight: 700; letter-spacing: 1px; }
+        input { width: 100%; padding: 16px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); color: #FFF; border-radius: 8px; margin-bottom: 20px; font-size: 16px; }
+        input:focus { outline: none; border-color: #007AFF; }
+        button { width: 100%; padding: 16px; background: #007AFF; color: #FFF; border: none; border-radius: 8px; font-weight: 900; font-size: 16px; cursor: pointer; transition: background 0.2s; }
+        button:active { transform: scale(0.98); }
+    </style>
+</head>
+<body>
+    <div class="admin-box">
+        <h1>Controle do Letreiro</h1>
+        <label>TEXTO DE AVISO DA RECEPÇÃO</label>
+        <input type="text" id="novoAviso" placeholder="Digite o recado ou aviso institucional...">
+        <button onclick="updateAviso()">ATUALIZAR MENSAGEM</button>
+    </div>
+
+    <script>
+        const socket = io();
+
+        // Carrega o texto atual assim que abre a página
+        socket.on('sync_inicial', (db) => {
+            document.getElementById('novoAviso').value = db.aviso;
+        });
+
+        function updateAviso() {
+            const val = document.getElementById('novoAviso').value.trim();
+            if(val) { 
+                socket.emit('update_aviso', val); 
+                alert("Letreiro atualizado com sucesso na TV!"); 
+            }
+        }
+    </script>
+</body>
+</html>

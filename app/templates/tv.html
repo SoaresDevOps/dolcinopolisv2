@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PrimeLogic TV v2</title>
+    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        
+        :root { 
+            --bg-dark: #0A0F1A; 
+            --bg-sidebar: #141923; 
+            --prime-blue: #007AFF; 
+            --text-main: #FFFFFF; 
+            --text-dim: #8E9BAE; 
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        
+        body { 
+            background-color: var(--bg-dark); 
+            color: var(--text-main); 
+            overflow: hidden; 
+            width: 100vw; 
+            height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+        }
+
+        /* ÁREA PRINCIPAL (93% DA TELA) */
+        .content-area { display: flex; height: 93vh; width: 100vw; }
+
+        /* ==========================================
+           LADO ESQUERDO: SIDEBAR FIXA (30%)
+           ========================================== */
+        .sidebar { 
+            width: 30vw; 
+            background-color: var(--bg-sidebar); 
+            border-right: 4px solid var(--prime-blue); 
+            display: flex; 
+            flex-direction: column; 
+            padding: 2vw; 
+            z-index: 10; 
+            box-shadow: 10px 0 20px rgba(0,0,0,0.5); /* Sombra simples, não pesa */
+        }
+        
+        /* 1. Logo e Marca */
+        .brand-box { text-align: center; margin-bottom: 2vh; }
+        .brand-logo { max-width: 80%; height: 8vh; object-fit: contain; margin-bottom: 1vh; }
+        .brand-name { font-size: 1.2vw; font-weight: 900; color: var(--text-dim); text-transform: uppercase; }
+        
+        /* 2. Relógio */
+        .clock-box { text-align: center; margin-bottom: 3vh; background: rgba(0,0,0,0.3); padding: 2vh; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); }
+        .time { font-size: 4.5vw; font-weight: 900; letter-spacing: -2px; line-height: 1; color: var(--prime-blue); }
+        .date { font-size: 1vw; color: var(--text-dim); font-weight: 700; text-transform: uppercase; margin-top: 5px; }
+
+        /* 3. Caixa de Histórico */
+        .history-box { flex: 1; background: #05070A; border-radius: 8px; padding: 1.5vw; display: flex; flex-direction: column; border: 1px solid rgba(255,255,255,0.05); }
+        .history-title { font-size: 1.2vw; font-weight: 900; color: var(--prime-blue); margin-bottom: 15px; text-transform: uppercase; text-align: center; letter-spacing: 1px;}
+        .history-item { padding: 1.2vh 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .h-paciente { font-size: 1.5vw; font-weight: 700; color: #FFF; text-transform: uppercase;}
+        .h-sala { font-size: 1.2vw; color: var(--text-dim); }
+
+        /* ==========================================
+           LADO DIREITO: PALCO DE VÍDEO E CHAMADA (70%)
+           ========================================== */
+        .main-stage { 
+            width: 70vw; 
+            position: relative; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            background: #000;
+        }
+
+        /* Vídeo de Fundo */
+        .bg-video {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 1;
+        }
+
+        /* Máscara Escura (Escurece o vídeo na hora da chamada sem usar blur) */
+        .video-mask {
+            position: absolute;
+            inset: 0;
+            background-color: rgba(5, 7, 10, 0.85); /* Preto com 85% de opacidade */
+            z-index: 2;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .video-mask.active { opacity: 1; }
+
+        /* Card da Chamada */
+        .call-card {
+            position: relative;
+            z-index: 3;
+            background-color: var(--bg-sidebar);
+            border-left: 8px solid #E63946; /* Borda de destaque vermelha */
+            padding: 4vw;
+            border-radius: 0 16px 16px 0;
+            text-align: left;
+            width: 80%;
+            box-shadow: 20px 20px 40px rgba(0,0,0,0.8);
+            opacity: 0;
+            transform: translateX(-30px);
+            transition: all 0.4s ease;
+        }
+        .call-card.active { 
+            opacity: 1; 
+            transform: translateX(0); 
+        }
+
+        .alert-badge { display: inline-block; background-color: #E63946; color: white; font-size: 2vw; font-weight: 900; padding: 0.8vh 2vw; border-radius: 4px; margin-bottom: 2vh; letter-spacing: 4px; }
+        .patient-name { font-size: 6vw; font-weight: 900; line-height: 1; margin-bottom: 2vh; color: var(--text-main); text-transform: uppercase;}
+        .call-details { font-size: 3vw; color: var(--text-dim); font-weight: 700; text-transform: uppercase; }
+        .highlight { color: var(--prime-blue); font-weight: 900; }
+
+        /* Barra de tempo rolando na chamada */
+        .progress-bar { position: absolute; bottom: 0; left: 0; height: 1vh; background-color: #E63946; width: 0%; transition: width 12s linear; }
+        .call-card.active .progress-bar { width: 100%; }
+
+        /* ==========================================
+           LETREIRO RODAPÉ (7% ALTURA)
+           ========================================== */
+        .ticker-wrap { height: 7vh; background: var(--prime-blue); display: flex; align-items: center; overflow: hidden; width: 100vw; z-index: 20; position: relative;}
+        .ticker-text { font-size: 2.5vh; font-weight: 900; color: #FFF; white-space: nowrap; padding-left: 100vw; animation: ticker 25s linear infinite; text-transform: uppercase; letter-spacing: 2px;}
+        @keyframes ticker { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
+    </style>
+</head>
+<body>
+
+    <audio id="audioEngine" src="{{ url_for('static', filename='audios/prime_chime.mp3') }}"></audio>
+
+    <div class="content-area">
+        <aside class="sidebar">
+            <div class="brand-box">
+                <img class="brand-logo" src="{{ url_for('static', filename='imagens/logo_municipio.png') }}" onerror="this.style.display='none'">
+                <div class="brand-name">Prefeitura Municipal</div>
+            </div>
+            <div class="clock-box">
+                <div class="time" id="main-clock">00:00</div>
+                <div class="date" id="main-date">...</div>
+            </div>
+            
+            <div class="history-box">
+                <div class="history-title">Últimos Chamados</div>
+                <div id="history-container">
+                    </div>
+            </div>
+        </aside>
+
+        <main class="main-stage">
+            <video class="bg-video" autoplay loop muted playsinline>
+                <source src="{{ url_for('static', filename='videos/institucional.mp4') }}" type="video/mp4">
+            </video>
+            
+            <div class="video-mask" id="video-mask"></div>
+
+            <div class="call-card" id="call-card">
+                <div class="alert-badge">ATENÇÃO</div>
+                <div class="patient-name" id="tv-paciente">NOME</div>
+                <div class="call-details">DIRIJA-SE AO <span class="highlight" id="tv-sala">LOCAL</span></div>
+                <div class="call-details" style="font-size: 2vw; margin-top: 1vh;">COM <span class="highlight" id="tv-doutor">DOUTOR</span></div>
+                <div class="progress-bar"></div>
+            </div>
+        </main>
+    </div>
+
+    <div class="ticker-wrap">
+        <div class="ticker-text" id="ticker-msg">CARREGANDO MENSAGENS...</div>
+    </div>
+
+    <script>
+        const socket = io();
+        const audioEngine = document.getElementById("audioEngine");
+        let callTimeout;
+        let ultimaChamada = 0;
+
+        // Atualiza a Hora
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('main-clock').innerText = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('main-date').innerText = now.toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' });
+        }
+        setInterval(updateTime, 1000); updateTime();
+
+        // Renderiza o Histórico
+        function renderHistory(historico) {
+            const container = document.getElementById('history-container');
+            container.innerHTML = '';
+            historico.forEach(item => {
+                container.innerHTML += `<div class="history-item"><div class="h-paciente">${item.paciente}</div><div class="h-sala">${item.sala}</div></div>`;
+            });
+        }
+
+        // Sincronização Inicial
+        socket.on("sync_inicial", (db) => {
+            document.getElementById('ticker-msg').innerText = "+++ " + db.aviso + " +++ " + db.aviso;
+            renderHistory(db.historico);
+        });
+
+        // Sincronização do Letreiro vindo do Admin
+        socket.on("sync_aviso", (novoAviso) => {
+            document.getElementById('ticker-msg').innerText = "+++ " + novoAviso + " +++ " + novoAviso;
+        });
+
+        // Recebe Nova Chamada
+        socket.on("sync_tv", (data) => {
+            const agora = Date.now();
+            if (agora - ultimaChamada < 5000) return;
+            ultimaChamada = agora;
+
+            document.getElementById("tv-paciente").innerText = data.paciente;
+            document.getElementById("tv-sala").innerText = data.sala;
+            document.getElementById("tv-doutor").innerText = data.doutor.split(' (')[0]; 
+            
+            renderHistory(data.historico);
+
+            const videoMask = document.getElementById("video-mask");
+            const callCard = document.getElementById("call-card");
+
+            // Reinicia as animações
+            videoMask.classList.remove("active");
+            callCard.classList.remove("active");
+            void callCard.offsetWidth; // Reflow para reiniciar a barra de progresso
+            
+            // Ativa os elementos de chamada
+            videoMask.classList.add("active");
+            callCard.classList.add("active");
+
+            // Toca Som
+            audioEngine.currentTime = 0;
+            audioEngine.play().catch(()=>{});
+
+            // Toca Voz Gerada pelo Python
+            setTimeout(() => {
+                const vozAudio = new Audio(`/static/audios/voz.mp3?t=${data.cache_buster}`);
+                vozAudio.play();
+            }, 1500);
+
+            // Esconde a chamada e volta a iluminar o vídeo
+            clearTimeout(callTimeout);
+            callTimeout = setTimeout(() => {
+                videoMask.classList.remove("active");
+                callCard.classList.remove("active");
+            }, 12000);
+        });
+
+        setInterval(() => { document.body.style.opacity = (Math.random() * 0.01) + 0.99; }, 30000);
+    </script>
+</body>
+</html>
